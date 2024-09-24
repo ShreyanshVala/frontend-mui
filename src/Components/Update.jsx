@@ -14,6 +14,7 @@ import {
 import axios from "axios"; // Import axios
 
 export const Update = () => {
+  const BASE_URL = process.env.REACT_APP_BACKEND_URL;
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [mobile, setMobile] = useState("");
@@ -55,7 +56,7 @@ export const Update = () => {
 
     try {
       const response = await axios.patch(
-        `http://localhost:3000/update/${id}`,
+        `${BASE_URL}/update/${id}`,
         updateUser
       );
 
@@ -78,7 +79,7 @@ export const Update = () => {
   const getSingleUser = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`http://localhost:3000/get/${id}`);
+      const response = await axios.get(`${BASE_URL}/get/${id}`);
 
       if (response.status !== 200) {
         setError(response.data.error);

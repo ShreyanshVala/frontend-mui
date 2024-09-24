@@ -16,6 +16,7 @@ import {
 } from "@mui/material";
 
 export const Create = () => {
+  const BASE_URL = process.env.REACT_APP_BACKEND_URL;
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [mobile, setMobile] = useState("");
@@ -67,7 +68,7 @@ export const Create = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post("http://localhost:3000/add", addUser);
+      const response = await axios.post(`${BASE_URL}/add`, addUser);
 
       const result = response.data;
 

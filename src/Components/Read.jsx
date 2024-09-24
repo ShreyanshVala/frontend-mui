@@ -18,6 +18,7 @@ import {
 import axios from "axios";
 
 export const Read = () => {
+  const BASE_URL = process.env.REACT_APP_BACKEND_URL;
   const [data, setData] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -31,7 +32,8 @@ export const Read = () => {
     setLoading(true);
     setError("");
     try {
-      const response = await axios.get("http://localhost:3000/get");
+      // const response = await axios.get("https://frontend-mui.vercel.app/get");
+      const response = await axios.get(`${BASE_URL}/get`);
       setData(response.data);
     } catch (err) {
       setError("Failed to fetch data.");
@@ -47,7 +49,8 @@ export const Read = () => {
     setDeletingId(deleteId); // Set the current deleting item's ID to show the loader
     try {
       const response = await axios.delete(
-        `http://localhost:3000/delete/${deleteId}`
+        // `https://frontend-mui.vercel.app/delete/${deleteId}`
+        `${BASE_URL}/delete/${deleteId}`
       );
 
       setData((prevData) => prevData.filter((item) => item._id !== deleteId));
