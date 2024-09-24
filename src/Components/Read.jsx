@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   Card,
   CardContent,
@@ -8,111 +8,183 @@ import {
   Grid,
   Container,
   Alert,
+  CircularProgress,
+  Box,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
 } from "@mui/material";
+import axios from "axios";
 
 export const Read = () => {
   const [data, setData] = useState([]);
   const [error, setError] = useState("");
-  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState(null);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
+  const [redirectLoading, setRedirectLoading] = useState(false);
 
+  // Function to fetch data using axios
   async function getData() {
+    setLoading(true);
+    setError("");
     try {
-      const response = await fetch("http://localhost:5000/get");
-      const result = await response.json();
-
-      if (!response.ok) {
-        console.log(result.error);
-        setError(result.error);
-      } else {
-        setData(result);
-      }
+      const response = await axios.get("http://localhost:3000/get");
+      setData(response.data);
     } catch (err) {
       setError("Failed to fetch data.");
-      console.error(err);
+    } finally {
+      setLoading(false);
     }
   }
 
-  const handleDelete = async (id) => {
+  // Handle item deletion using axios
+  const handleDelete = async () => {
+    if (!deleteId) return;
+
+    setDeletingId(deleteId); // Set the current deleting item's ID to show the loader
     try {
-      const response = await fetch(`http://localhost:5000/delete/${id}`, {
-        method: "DELETE",
-      });
-      const result = await response.json();
+      const response = await axios.delete(
+        `http://localhost:3000/delete/${deleteId}`
+      );
 
-      if (!response.ok) {
-        console.log(result.error);
-        setError(result.error);
-      } else {
-        setError("Deleted Successfully");
-
-        setTimeout(() => {
-          setError("");
-          getData();
-        }, 2000);
-      }
+      setData((prevData) => prevData.filter((item) => item._id !== deleteId));
+      setRedirectLoading(true); // Show loader during redirect
+      setTimeout(() => {
+        setRedirectLoading(false);
+      }, 1000);
     } catch (err) {
       setError("Failed to delete item.");
-      console.error(err);
+    } finally {
+      setDeletingId(null); // Stop showing the loader after deletion
+      setOpenDialog(false); // Close the dialog
     }
   };
 
+  // Open confirmation dialog before deleting
+  const openDeleteDialog = (id) => {
+    setDeleteId(id); // Set the ID of the item to delete
+    setOpenDialog(true); // Open the dialog
+  };
+
+  // Close dialog without deleting
+  const handleCloseDialog = () => {
+    setOpenDialog(false); // Close the dialog
+    setDeleteId(null); // Clear the deleteId
+  };
+
+  // Fetch data on component mount
   useEffect(() => {
     getData();
   }, []);
 
   return (
     <Container sx={{ my: 2 }}>
-      <Typography variant="h4" align="center" gutterBottom>
+      <Typography
+        variant="h4"
+        component="h2"
+        align="center"
+        gutterBottom
+        sx={{
+          fontFamily: "'Poppins', sans-serif",
+          fontWeight: "700",
+          fontSize: "2rem",
+          color: "#333",
+          letterSpacing: "0.1rem",
+          textTransform: "uppercase",
+        }}
+      >
         All Data
       </Typography>
+
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
       )}
-      <Grid container spacing={2}>
-        {data.length > 0 ? (
-          data.map((ele) => (
-            <Grid item xs={12} sm={6} md={3} key={ele._id}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" component="div">
-                    {ele.name}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {ele.email}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {ele.age}
-                  </Typography>
-                  <Button
-                    size="small"
-                    color="error"
-                    onClick={() => {
-                      handleDelete(ele._id);
-                      navigate("/", { replace: true });
-                    }}
-                  >
-                    Delete
-                  </Button>
-                  <Button
-                    size="small"
-                    component={Link}
-                    to={`/${ele._id}`}
-                    sx={{ ml: 1 }}
-                  >
-                    Edit
-                  </Button>
-                </CardContent>
-              </Card>
-            </Grid>
-          ))
-        ) : (
-          <Typography variant="body1" align="center">
-            No data available
-          </Typography>
-        )}
-      </Grid>
+
+      {loading || redirectLoading ? (
+        <Box display="flex" justifyContent="center" my={4}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <Grid container spacing={2}>
+          {data.length > 0 ? (
+            data.map((ele) => (
+              <Grid item xs={12} sm={6} md={3} key={ele._id}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" component="div">
+                      {ele.name}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {ele.email}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {ele.mobile}
+                    </Typography>
+
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      color="error"
+                      onClick={() => openDeleteDialog(ele._id)}
+                      disabled={deletingId === ele._id}
+                      sx={{ position: "relative" }}
+                    >
+                      {deletingId === ele._id ? (
+                        <CircularProgress
+                          size={24}
+                          sx={{
+                            position: "absolute",
+                            top: "50%",
+                            left: "50%",
+                            marginTop: "-12px",
+                            marginLeft: "-12px",
+                          }}
+                        />
+                      ) : (
+                        "Delete"
+                      )}
+                    </Button>
+
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      component={Link}
+                      to={`/${ele._id}`}
+                      sx={{ ml: 1 }}
+                    >
+                      Edit
+                    </Button>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))
+          ) : (
+            <Typography variant="body1" align="center">
+              No data available
+            </Typography>
+          )}
+        </Grid>
+      )}
+
+      <Dialog open={openDialog} onClose={handleCloseDialog}>
+        <DialogTitle>Confirm Deletion</DialogTitle>
+        <DialogContent>
+          <Typography>Are you sure you want to delete this item?</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleDelete} color="error">
+            {deletingId ? <CircularProgress size={20} /> : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

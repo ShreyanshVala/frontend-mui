@@ -1,12 +1,28 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { TextField, Button, Container, Typography, Alert } from "@mui/material";
+import {
+  TextField,
+  Button,
+  Container,
+  Typography,
+  Alert,
+  CircularProgress,
+  Box,
+  Card,
+  CardContent,
+} from "@mui/material";
+import axios from "axios"; // Import axios
 
 export const Update = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [age, setAge] = useState("");
-
+  const [mobile, setMobile] = useState("");
+  const [initialData, setInitialData] = useState({
+    name: "",
+    email: "",
+    mobile: "",
+  }); // New state to track initial data
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const { id } = useParams();
   const navigate = useNavigate();
@@ -14,7 +30,16 @@ export const Update = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!name || !email || !age) {
+    if (
+      name === initialData.name &&
+      email === initialData.email &&
+      mobile === initialData.mobile
+    ) {
+      setError("No changes detected.");
+      return;
+    }
+
+    if (!name || !email || !mobile) {
       setError("Please fill in all fields.");
       return;
     }
@@ -24,109 +49,140 @@ export const Update = () => {
       return;
     }
 
-    const updateUser = { name, email, age: Number(age) };
+    const updateUser = { name, email, mobile };
+
+    setLoading(true);
+
     try {
-      const response = await fetch(`http://localhost:5000/update/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify(updateUser),
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      const response = await axios.patch(
+        `http://localhost:3000/update/${id}`,
+        updateUser
+      );
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        console.log(result.error);
-        setError(result.error || "An unknown error occurred.");
+      if (response.status !== 200) {
+        setError(response.data.error || "An unknown error occurred.");
+        setLoading(false);
         return;
       }
 
-      console.log(result);
-      navigate("/:id", { replace: true });
+      setTimeout(() => {
+        setLoading(false);
+        navigate("/", { replace: true });
+      }, 1000);
     } catch (error) {
-      setError("Error: Could not use the same email address.");
+      setError("Error: Could not update the data.");
+      setLoading(false);
     }
   };
 
   const getSingleUser = async () => {
-    const response = await fetch(`http://localhost:5000/get/${id}`);
-    const result = await response.json();
+    try {
+      setLoading(true);
+      const response = await axios.get(`http://localhost:3000/get/${id}`);
 
-    if (!response.ok) {
-      console.log(result.error);
-      setError(result.error);
-    }
+      if (response.status !== 200) {
+        setError(response.data.error);
+        setLoading(false);
+        return;
+      }
 
-    if (response.ok) {
-      setError("");
+      const result = response.data;
       setName(result.name);
       setEmail(result.email);
-      setAge(result.age);
+      setMobile(result.mobile);
+      setInitialData({
+        name: result.name,
+        email: result.email,
+        mobile: result.mobile,
+      });
+      setError("");
+      setLoading(false);
+    } catch (error) {
+      setError("Error fetching user data.");
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     getSingleUser();
-  }, []);
+  }, [id]);
 
   return (
     <Container sx={{ my: 3 }}>
       {error && <Alert severity="error">{error}</Alert>}
 
-      <Typography variant="h4" align="center" gutterBottom>
+      <Typography
+        variant="h4"
+        component="h2"
+        align="center"
+        gutterBottom
+        sx={{
+          fontFamily: "'Poppins', sans-serif", // Stylish font family
+          fontWeight: "700", // Bold font weight
+          fontSize: "2rem", // Font size for large text
+          color: "#333", // Darker color for better contrast
+          letterSpacing: "0.1rem", // Add letter spacing for elegance
+          textTransform: "uppercase", // Uppercase text
+        }}
+      >
         Edit The Data
       </Typography>
 
-      <form onSubmit={handleSubmit}>
-        <TextField
-          label="Name"
-          variant="outlined"
-          margin="normal"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          sx={{ minWidth: "700px" }}
-        />
+      <Card sx={{ maxWidth: 600, mx: "auto", mt: 4, p: 2 }}>
+        <CardContent>
+          <form onSubmit={handleSubmit}>
+            <TextField
+              label="Name"
+              variant="outlined"
+              margin="normal"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              fullWidth
+            />
 
-        <TextField
-          label="Email Address"
-          variant="outlined"
-          margin="normal"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          sx={{ minWidth: "700px" }}
-        />
+            <TextField
+              label="Email Address"
+              variant="outlined"
+              margin="normal"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              fullWidth
+            />
 
-        <TextField
-          label="Age"
-          variant="outlined"
-          margin="normal"
-          type="number"
-          value={age}
-          onChange={(e) => setAge(e.target.value)}
-          sx={{ minWidth: "700px" }}
-        />
+            <TextField
+              label="Mobile Number"
+              variant="outlined"
+              margin="normal"
+              value={mobile}
+              onChange={(e) => setMobile(e.target.value)}
+              fullWidth
+            />
 
-        <Button
-          type="submit"
-          variant="contained"
-          color="primary"
-          sx={{ mt: 2, minWidth: "700px" }}
-        >
-          Submit
-        </Button>
-
-        <Button
-          type="submit"
-          variant="contained"
-          color="primary"
-          sx={{ mt: 2, minWidth: "700px" }}
-          onClick={() => navigate("/")}
-        >
-          Cancel
-        </Button>
-      </form>
+            <Box display="flex" justifyContent="space-between" mt={2}>
+              <Button
+                variant="contained"
+                color="primary"
+                fullWidth
+                sx={{ mr: 1 }}
+                onClick={() => navigate("/", { replace: true })}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="contained"
+                color="primary"
+                fullWidth
+                sx={{ ml: 1 }}
+                disabled={loading} // Disable button while loading
+              >
+                {loading ? <CircularProgress size={24} /> : "Submit"}
+              </Button>
+            </Box>
+          </form>
+        </CardContent>
+      </Card>
     </Container>
   );
 };
