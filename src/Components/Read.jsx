@@ -1,90 +1,78 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
 import {
+  Container,
   Card,
   CardContent,
   Typography,
-  Button,
-  Grid,
-  Container,
-  Alert,
   CircularProgress,
-  Box,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
+  Button,
 } from "@mui/material";
-import axios from "axios";
 
 export const Read = () => {
+  const navigate = useNavigate();
+
   const BASE_URL = process.env.REACT_APP_BACKEND_URL;
-  const [data, setData] = useState([]);
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [deletingId, setDeletingId] = useState(null);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [deleteId, setDeleteId] = useState(null);
-  const [redirectLoading, setRedirectLoading] = useState(false);
 
-  // Function to fetch data using axios
-  async function getData() {
-    setLoading(true);
-    setError("");
-    try {
-      // const response = await axios.get("https://frontend-mui.vercel.app/get");
-      const response = await axios.get(`${BASE_URL}/get`);
-      setData(response.data);
-    } catch (err) {
-      setError("Failed to fetch data.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // Handle item deletion using axios
-  const handleDelete = async () => {
-    if (!deleteId) return;
-
-    setDeletingId(deleteId); // Set the current deleting item's ID to show the loader
-    try {
-      const response = await axios.delete(
-        // `https://frontend-mui.vercel.app/delete/${deleteId}`
-        `${BASE_URL}/delete/${deleteId}`
-      );
-
-      setData((prevData) => prevData.filter((item) => item._id !== deleteId));
-      setRedirectLoading(true); // Show loader during redirect
-      setTimeout(() => {
-        setRedirectLoading(false);
-      }, 1000);
-    } catch (err) {
-      setError("Failed to delete item.");
-    } finally {
-      setDeletingId(null); // Stop showing the loader after deletion
-      setOpenDialog(false); // Close the dialog
-    }
-  };
-
-  // Open confirmation dialog before deleting
-  const openDeleteDialog = (id) => {
-    setDeleteId(id); // Set the ID of the item to delete
-    setOpenDialog(true); // Open the dialog
-  };
-
-  // Close dialog without deleting
-  const handleCloseDialog = () => {
-    setOpenDialog(false); // Close the dialog
-    setDeleteId(null); // Clear the deleteId
-  };
-
-  // Fetch data on component mount
   useEffect(() => {
-    getData();
-  }, []);
+    const fetchPosts = async () => {
+      setLoading(true);
+      try {
+        const token = localStorage.getItem("token"); // Retrieve token from storage
+        const response = await axios.get(`${BASE_URL}/post/get`, {
+          headers: { Authorization: `Bearer ${token}` }, // Send token in header
+        });
+        console.log("Response Data:", response.data); // Debug: Log the response data
+        setPosts(response.data); // Ensure this matches your API response structure
+        setError("");
+      } catch (err) {
+        console.error("Error fetching posts:", err); // Debug: Log any errors
+        setError("Error fetching posts");
+      } finally {
+        setLoading(false); // Ensure loading is false regardless of success or failure
+      }
+    };
+
+    fetchPosts();
+  }, [BASE_URL]);
+
+  const handleDelete = async (postId) => {
+    if (window.confirm("Are you sure you want to delete this post?")) {
+      setLoading(true);
+      try {
+        const token = localStorage.getItem("token"); // Retrieve token from storage
+        await axios.delete(`${BASE_URL}/post/delete/${postId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`, // Send token in the header
+          },
+        });
+        // Update the state to remove the deleted post
+        setPosts((prevPosts) =>
+          prevPosts.filter((post) => post._id !== postId)
+        );
+        setError("");
+      } catch (err) {
+        console.error(
+          "Delete error:",
+          err.response ? err.response.data : err.message
+        );
+        setError(err.response?.data?.error || "Error deleting post"); // Show specific error message if available
+      } finally {
+        setLoading(false); // Ensure loading is false regardless of success or failure
+      }
+    }
+  };
+
+  const handleUpdateClick = (postId) => {
+    navigate(`/update/${postId}`);
+  };
 
   return (
-    <Container sx={{ my: 2 }}>
+    <Container>
       <Typography
         variant="h4"
         component="h2"
@@ -99,95 +87,63 @@ export const Read = () => {
           textTransform: "uppercase",
         }}
       >
-        All Data
+        All Posts
       </Typography>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
+      {loading ? (
+        <CircularProgress />
+      ) : error ? (
+        <Typography color="error">{error}</Typography>
+      ) : posts.length > 0 ? (
+        posts.map((post) => (
+          <Card key={post._id} sx={{ mt: 2 }}>
+            <CardContent>
+              <Typography variant="h6" component="h4">
+                {post.title}
+              </Typography>
+              <Typography variant="body2" color="textSecondary">
+                {post.description}
+              </Typography>
+              <Button
+                variant="contained"
+                color="error"
+                sx={{
+                  mt: 2,
+                  mr: 1,
+                  minWidth: "120px", // Ensures a minimum width for uniform button size
+                  fontWeight: "bold", // Makes the text stand out
+                  boxShadow: "0px 3px 6px rgba(0, 0, 0, 0.16)", // Adds a subtle shadow
+                  "&:hover": {
+                    backgroundColor: "#d32f2f", // Darker shade on hover
+                  },
+                }}
+                onClick={() => handleDelete(post._id)}
+              >
+                Delete
+              </Button>
 
-      {loading || redirectLoading ? (
-        <Box display="flex" justifyContent="center" my={4}>
-          <CircularProgress />
-        </Box>
+              <Button
+                variant="contained"
+                color="primary"
+                sx={{
+                  mt: 2,
+                  minWidth: "120px", // Ensures a minimum width for uniform button size
+                  fontWeight: "bold",
+                  boxShadow: "0px 3px 6px rgba(0, 0, 0, 0.16)",
+                  "&:hover": {
+                    backgroundColor: "#1565c0",
+                  },
+                }}
+                onClick={() => handleUpdateClick(post._id)} // Pass post._id as an argument
+              >
+                Update
+              </Button>
+            </CardContent>
+          </Card>
+        ))
       ) : (
-        <Grid container spacing={2}>
-          {data.length > 0 ? (
-            data.map((ele) => (
-              <Grid item xs={12} sm={6} md={3} key={ele._id}>
-                <Card>
-                  <CardContent>
-                    <Typography variant="h6" component="div">
-                      {ele.name}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {ele.email}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {ele.mobile}
-                    </Typography>
-
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      color="error"
-                      onClick={() => openDeleteDialog(ele._id)}
-                      disabled={deletingId === ele._id}
-                      sx={{ position: "relative" }}
-                    >
-                      {deletingId === ele._id ? (
-                        <CircularProgress
-                          size={24}
-                          sx={{
-                            position: "absolute",
-                            top: "50%",
-                            left: "50%",
-                            marginTop: "-12px",
-                            marginLeft: "-12px",
-                          }}
-                        />
-                      ) : (
-                        "Delete"
-                      )}
-                    </Button>
-
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      component={Link}
-                      to={`/${ele._id}`}
-                      sx={{ ml: 1 }}
-                    >
-                      Edit
-                    </Button>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))
-          ) : (
-            <Typography variant="body1" align="center">
-              No data available
-            </Typography>
-          )}
-        </Grid>
+        <Typography>No posts available</Typography>
       )}
-
-      <Dialog open={openDialog} onClose={handleCloseDialog}>
-        <DialogTitle>Confirm Deletion</DialogTitle>
-        <DialogContent>
-          <Typography>Are you sure you want to delete this item?</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog} color="primary">
-            Cancel
-          </Button>
-          <Button onClick={handleDelete} color="error">
-            {deletingId ? <CircularProgress size={20} /> : "Delete"}
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Container>
   );
 };

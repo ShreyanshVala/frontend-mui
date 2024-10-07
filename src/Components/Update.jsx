@@ -1,186 +1,123 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import axios from "axios";
+import { useParams, useNavigate } from "react-router-dom";
 import {
-  TextField,
-  Button,
   Container,
-  Typography,
-  Alert,
-  CircularProgress,
-  Box,
   Card,
   CardContent,
+  Typography,
+  TextField,
+  Button,
+  CircularProgress,
 } from "@mui/material";
-import axios from "axios"; // Import axios
 
 export const Update = () => {
-  const BASE_URL = process.env.REACT_APP_BACKEND_URL;
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [mobile, setMobile] = useState("");
-  const [initialData, setInitialData] = useState({
-    name: "",
-    email: "",
-    mobile: "",
-  }); // New state to track initial data
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const { id } = useParams();
+  const { id } = useParams(); // Get the ID from URL parameters
   const navigate = useNavigate();
+  const BASE_URL = process.env.REACT_APP_BACKEND_URL;
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (
-      name === initialData.name &&
-      email === initialData.email &&
-      mobile === initialData.mobile
-    ) {
-      setError("No changes detected.");
-      return;
-    }
-
-    if (!name || !email || !mobile) {
-      setError("Please fill in all fields.");
-      return;
-    }
-
-    if (!/^\S+@\S+\.\S+$/.test(email)) {
-      setError("Please enter a valid email address.");
-      return;
-    }
-
-    const updateUser = { name, email, mobile };
-
-    setLoading(true);
-
-    try {
-      const response = await axios.patch(
-        `${BASE_URL}/update/${id}`,
-        updateUser
-      );
-
-      if (response.status !== 200) {
-        setError(response.data.error || "An unknown error occurred.");
-        setLoading(false);
-        return;
-      }
-
-      setTimeout(() => {
-        setLoading(false);
-        navigate("/", { replace: true });
-      }, 1000);
-    } catch (error) {
-      setError("Error: Could not update the data.");
-      setLoading(false);
-    }
-  };
-
-  const getSingleUser = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get(`${BASE_URL}/get/${id}`);
-
-      if (response.status !== 200) {
-        setError(response.data.error);
-        setLoading(false);
-        return;
-      }
-
-      const result = response.data;
-      setName(result.name);
-      setEmail(result.email);
-      setMobile(result.mobile);
-      setInitialData({
-        name: result.name,
-        email: result.email,
-        mobile: result.mobile,
-      });
-      setError("");
-      setLoading(false);
-    } catch (error) {
-      setError("Error fetching user data.");
-      setLoading(false);
-    }
-  };
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [initialTitle, setInitialTitle] = useState(""); // To store initial title
+  const [initialDescription, setInitialDescription] = useState(""); // To store initial description
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    getSingleUser();
-  }, [id]);
+    const fetchPost = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.get(`${BASE_URL}/post/get/${id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const post = response.data;
+
+        // Check if post data is valid
+        if (post) {
+          setTitle(post.title);
+          setDescription(post.description);
+          setInitialTitle(post.title); // Set initial title
+          setInitialDescription(post.description); // Set initial description
+        } else {
+          setError("Post not found");
+        }
+      } catch (err) {
+        setError("Error fetching post data");
+        console.error("Error fetching post data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPost();
+  }, [BASE_URL, id]);
+
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    // Check if values have changed
+    if (title === initialTitle && description === initialDescription) {
+      setError("No changes were made to the post.");
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      await axios.patch(
+        `${BASE_URL}/post/update/${id}`, // Ensure you use the full URL
+        { title, description },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      navigate("/read");
+    } catch (err) {
+      setError("Error updating post");
+      console.error("Error updating post:", err); // Log error for debugging
+    }
+  };
+
+  if (loading) {
+    return <CircularProgress />;
+  }
 
   return (
-    <Container sx={{ my: 3 }}>
-      {error && <Alert severity="error">{error}</Alert>}
-
+    <Container>
       <Typography
         variant="h4"
         component="h2"
-        align="center"
         gutterBottom
         sx={{
-          fontFamily: "'Poppins', sans-serif", // Stylish font family
-          fontWeight: "700", // Bold font weight
-          fontSize: "2rem", // Font size for large text
-          color: "#333", // Darker color for better contrast
-          letterSpacing: "0.1rem", // Add letter spacing for elegance
-          textTransform: "uppercase", // Uppercase text
+          textAlign: "center",
+          color: "black",
+          marginBottom: "20px",
+          fontWeight: "bold",
+          marginTop: "30px",
         }}
       >
-        Edit The Data
+        Update Post
       </Typography>
 
-      <Card sx={{ maxWidth: 600, mx: "auto", mt: 4, p: 2 }}>
+      {error && <Typography color="error">{error}</Typography>}
+      <Card>
         <CardContent>
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleUpdate}>
             <TextField
-              label="Name"
-              variant="outlined"
-              margin="normal"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              label="Title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
               fullWidth
+              margin="normal"
             />
-
             <TextField
-              label="Email Address"
-              variant="outlined"
-              margin="normal"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              label="Description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
               fullWidth
-            />
-
-            <TextField
-              label="Mobile Number"
-              variant="outlined"
               margin="normal"
-              value={mobile}
-              onChange={(e) => setMobile(e.target.value)}
-              fullWidth
             />
-
-            <Box display="flex" justifyContent="space-between" mt={2}>
-              <Button
-                variant="contained"
-                color="primary"
-                fullWidth
-                sx={{ mr: 1 }}
-                onClick={() => navigate("/", { replace: true })}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                variant="contained"
-                color="primary"
-                fullWidth
-                sx={{ ml: 1 }}
-                disabled={loading} // Disable button while loading
-              >
-                {loading ? <CircularProgress size={24} /> : "Submit"}
-              </Button>
-            </Box>
+            <Button type="submit" variant="contained" color="primary">
+              Update
+            </Button>
           </form>
         </CardContent>
       </Card>

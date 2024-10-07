@@ -17,13 +17,13 @@ import {
 
 export const Create = () => {
   const BASE_URL = process.env.REACT_APP_BACKEND_URL;
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [mobile, setMobile] = useState("");
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState(""); // Fixed typo
+
   const [error, setError] = useState("");
-  const [nameError, setNameError] = useState("");
-  const [emailError, setEmailError] = useState("");
-  const [mobileError, setMobileError] = useState("");
+  const [titleError, setTitleError] = useState("");
+  const [descriptionError, setDescriptionError] = useState("");
+
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
@@ -31,31 +31,21 @@ export const Create = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    setNameError("");
-    setEmailError("");
-    setMobileError("");
+    setTitleError("");
+    setDescriptionError("");
     setError("");
 
     let isValid = true;
 
-    if (!name) {
-      setNameError("Name is required");
+    // Validate title
+    if (!title) {
+      setTitleError("Title is required");
       isValid = false;
     }
 
-    if (!email) {
-      setEmailError("Email is required.");
-      isValid = false;
-    } else if (!/^\S+@\S+\.\S+$/.test(email)) {
-      setEmailError("Please enter a valid email address");
-      isValid = false;
-    }
-
-    if (!mobile) {
-      setMobileError("Mobile Number is required.");
-      isValid = false;
-    } else if (!/^\d{10}$/.test(mobile)) {
-      setMobileError("Mobile number must be exactly 10 digits.");
+    // Validate description
+    if (!description) {
+      setDescriptionError("Description is required.");
       isValid = false;
     }
 
@@ -63,60 +53,47 @@ export const Create = () => {
       return;
     }
 
-    const addUser = { name, email, mobile };
-
+    const newPost = { title, description }; // Ensure correct field name
     setLoading(true);
 
     try {
-      const response = await axios.post(`${BASE_URL}/add`, addUser);
+      let header = {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      };
+
+      // Make the API call to add the data
+      const response = await axios.post(`${BASE_URL}/post/add`, newPost, {
+        headers: header,
+      });
 
       const result = response.data;
 
-      if (response.status !== 200 && response.status !== 201) {
-        setError(result.error || "An unknown error occurred.");
-        if (result.error === "Email address already in use") {
-          setEmailError(result.error);
-        }
-        setLoading(false);
-        return;
-      }
+      // Reset form inputs
+      setTitle("");
+      setDescription("");
 
-      setError("");
-      setName("");
-      setEmail("");
-      setMobile("");
+      setLoading(false);
 
-      setTimeout(() => {
-        setLoading(false);
-        navigate("/", { replace: true });
-      }, 1000);
+      // Navigate to Read page after successful submission
+      navigate("/read", { replace: true });
     } catch (error) {
-      setError("Error: Could not use the same email address.");
+      setError("Error: Could not submit the data. Please try again.");
       setLoading(false);
     }
   };
 
   const handleCancel = () => {
-    navigate("/", { replace: true });
+    navigate("/read", { replace: true });
   };
 
-  const handleNameChange = (e) => {
-    setName(e.target.value);
-    if (nameError) setNameError("");
+  const handleTitleChange = (e) => {
+    setTitle(e.target.value);
+    if (titleError) setTitleError("");
   };
 
-  const handleEmailChange = (e) => {
-    setEmail(e.target.value);
-    if (!/\S+@\S+\.\S+/.test(email)) {
-      setEmailError("Enter a Valid email address");
-    } else {
-      setEmailError("");
-    }
-  };
-
-  const handleMobileChange = (e) => {
-    setMobile(e.target.value);
-    if (mobileError) setMobileError("");
+  const handleDescriptionChange = (e) => {
+    setDescription(e.target.value); // Fixed typo
+    if (descriptionError) setDescriptionError(""); // Fixed typo
   };
 
   return (
@@ -163,15 +140,15 @@ export const Create = () => {
       >
         <CardContent>
           <form onSubmit={handleSubmit}>
-            <FormControl error={nameError} variant="standard" fullWidth>
+            <FormControl error variant="standard" fullWidth>
               <TextField
-                label="Name"
+                label="Title"
                 variant="outlined"
                 fullWidth
                 margin="normal"
-                value={name}
-                onChange={handleNameChange}
-                error={nameError}
+                value={title}
+                onChange={handleTitleChange}
+                error={Boolean(titleError)}
                 InputLabelProps={{
                   sx: {
                     fontSize: "1rem",
@@ -188,20 +165,19 @@ export const Create = () => {
                 }}
                 id="component-error-text"
               >
-                {nameError}
+                {titleError}
               </FormHelperText>
             </FormControl>
 
             <FormControl error variant="standard" fullWidth>
               <TextField
-                label="Email Address"
+                label="Description" // Fixed typo in label
                 variant="outlined"
                 fullWidth
                 margin="normal"
-                type="email"
-                value={email}
-                onChange={handleEmailChange}
-                error={emailError}
+                value={description} // Fixed typo
+                onChange={handleDescriptionChange} // Fixed typo
+                error={Boolean(descriptionError)} // Fixed typo
               />
               <FormHelperText
                 sx={{
@@ -212,33 +188,15 @@ export const Create = () => {
                 }}
                 id="component-error-text"
               >
-                {emailError}
+                {descriptionError}
               </FormHelperText>
             </FormControl>
 
-            <FormControl error variant="standard" fullWidth>
-              <TextField
-                label="Mobile Number"
-                variant="outlined"
-                fullWidth
-                margin="normal"
-                value={mobile}
-                onChange={handleMobileChange}
-                FormHelperText={mobileError}
-                error={mobileError}
-              />
-              <FormHelperText
-                sx={{
-                  marginTop: "-7px",
-                  fontSize: "-1rem",
-                  fontWeight: "500",
-                  color: "red",
-                }}
-                id="component-error-text"
-              >
-                {mobileError}
-              </FormHelperText>
-            </FormControl>
+            {error && (
+              <Typography color="error" sx={{ mt: 2 }}>
+                {error}
+              </Typography>
+            )}
 
             <Box display="flex" justifyContent="space-between" mt={2}>
               <Button
