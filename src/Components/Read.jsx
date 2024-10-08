@@ -9,6 +9,9 @@ import {
   CircularProgress,
   Button,
 } from "@mui/material";
+import Input from "@mui/material/Input";
+
+const ariaLabel = { "aria-label": "description" };
 
 export const Read = () => {
   const navigate = useNavigate();
@@ -17,6 +20,7 @@ export const Read = () => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [searchTerm, setSearchTerm] = useState(""); // State for search input
 
   useEffect(() => {
     const fetchPosts = async () => {
@@ -44,10 +48,10 @@ export const Read = () => {
     if (window.confirm("Are you sure you want to delete this post?")) {
       setLoading(true);
       try {
-        const token = localStorage.getItem("token"); // Retrieve token from storage
+        const token = localStorage.getItem("token");
         await axios.delete(`${BASE_URL}/post/delete/${postId}`, {
           headers: {
-            Authorization: `Bearer ${token}`, // Send token in the header
+            Authorization: `Bearer ${token}`,
           },
         });
         // Update the state to remove the deleted post
@@ -71,11 +75,16 @@ export const Read = () => {
     navigate(`/update/${postId}`);
   };
 
+  // Filter posts based on the search term
+  const filteredPosts = posts.filter((post) =>
+    post.title.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <Container>
       <Typography
         variant="h4"
-        component="h2"
+        component="h5"
         align="center"
         gutterBottom
         sx={{
@@ -85,17 +94,26 @@ export const Read = () => {
           color: "#333",
           letterSpacing: "0.1rem",
           textTransform: "uppercase",
+          marginTop: "1rem",
         }}
       >
         All Posts
       </Typography>
 
+      <Input
+        placeholder="Search"
+        inputProps={ariaLabel}
+        sx={{ width: 600, marginBottom: 2, marginTop: "1rem" }}
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+      />
+
       {loading ? (
         <CircularProgress />
       ) : error ? (
         <Typography color="error">{error}</Typography>
-      ) : posts.length > 0 ? (
-        posts.map((post) => (
+      ) : filteredPosts.length > 0 ? (
+        filteredPosts.map((post) => (
           <Card key={post._id} sx={{ mt: 2 }}>
             <CardContent>
               <Typography variant="h6" component="h4">
